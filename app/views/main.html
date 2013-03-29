@@ -1,9 +1,100 @@
-<div class="hero-unit">
-  <h1>'Allo, 'Allo!</h1>
-  <p>You now have</p>
-  <ul>
-      <li ng-repeat="thing in awesomeThings">{{thing}}</li>
-  </ul>
-  <p>installed.</p>
-  <h3>Enjoy coding! - Yeoman</h3>
+
+<!-- Site header -->
+<h1 class="page-header">Facebook Data Search</h1>
+
+<!-- Navbar with search input -->
+<div class="navbar">
+  <div class="navbar-inner">
+    <form class="navbar-search pull-left inline">
+        <input class="search-query" type="text" placeholder="Search..." 
+          ng-model="search.text">
+        <label class="checkbox inline">
+          <input type="checkbox" checked 
+            ng-model="search.attributes._type.likes"> Likes
+        </label>
+        <label class="checkbox inline">
+          <input type="checkbox" checked 
+            ng-model="search.attributes._type.posts"> Posts
+        </label>
+        <label class="checkbox inline">
+          <input type="checkbox" checked 
+            ng-model="search.attributes._type._other"> Other
+        </label>
+    </form>
+    <form class="navbar-form pull-right">
+      <input class="" type="text" placeholder="Facebook API token"
+        ng-model="facebookApiToken">
+      <button class="btn"
+        ng-click="loadFacebookObjects()"
+        ng-disabled="!canLoadFacebookData()">Load Facebook data</button>
+    </form>
+    <ul class="nav pull-right"><li class="divider-vertical"></li></ul>
+  </div>
+</div>
+
+<!-- Progress bar, shown when updating -->
+<div
+  ng-show="progress">
+  <p>Loading Facebook data...</p>
+
+  <div class="progress progress-striped active">
+    <div class="bar" style="width: {{progress}}%;"></div>
+  </div>
+</div>
+
+<!-- Error messages, shown when errors occurred -->
+<div class="alert alert-error"
+  ng-show="errors.length > 0">
+  <strong>Oh snap!</strong> An error ocurred while fetching your data from Facebook. Please try again.<br>
+  <small ng-repeat="error in errors">{{error}}<br></small>
+</div>
+
+<!-- List of result objects -->
+<p>
+  {{objects.length}} Results 
+  <small class="muted"
+    ng-show="objectsUpdatedAt">
+    Last updated {{objectsUpdatedAt.toTimeString()}}
+  </small>
+  <small class="muted"
+    ng-show="!objectsUpdatedAt">
+    Enter Facebook API access token to load data
+  </small>
+</p>
+
+<hr>
+
+<div class="object"
+  ng-repeat="object in objects | filter: search.text | attributeToggle: search.attributes">
+  <div class="clearfix">
+    <!-- Object info -->
+    <div class="pull-left">
+      <b>{{object._type}}</b> 
+      <a class="muted" href="https://www.facebook.com/{{object.id}}">{{object.id}}</a></td>
+      <p
+        ng-show="object.picture">
+        <img alt="Picture of {{object._type}} object {{object.id}}"
+          ng-src="{{object.picture}}">
+      </p>
+      <p
+        ng-show="!object.picture && object._preview">
+        {{object._preview | truncate:250}}
+      </p>
+      <p 
+        ng-show="!object.picture && !object._preview">
+        <i class="muted">No preview available</i>
+      </p>
+    </div>
+    <!-- Object actions -->
+    <button class="btn pull-right"
+      ng-click="showDetails=!showDetails">
+      Show data
+    </button>
+  </div>
+  <!-- Object details -->
+  <div class="well"
+    ng-show="showDetails">
+    {{object}}
+  </div>
+  <hr>
 </div>
