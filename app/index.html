@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width">
     <link rel="stylesheet" href="styles/main.css">
   </head>
-  <body ng-app="fbDataSearchApp">
+  <body ng-app="app">
     <div class="container" ng-view></div>
 
     <script src="components/angular/angular.js"></script>
@@ -17,7 +17,9 @@
     <script src="components/underscore/underscore.js"></script>
     <script src="scripts/app.js"></script>
     <script src="scripts/config/facebook-objects.js"></script>
-    <script src="scripts/filters/filters.js"></script>
+    <script src="scripts/filters/truncate.js"></script>
+    <script src="scripts/filters/attribute-filter.js"></script>
+    <script src="scripts/services/facebook-api.js"></script>
     <script src="scripts/controllers/main.js"></script>
     <!-- endbuild -->
   </body>

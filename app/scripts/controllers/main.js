@@ -1,8 +1,10 @@
 'use strict';
 
-var module = angular.module('fbDataSearchApp');
+/**
+* Main controller
+*/
 
-module.controller('MainCtrl', function ($scope, $http) {
+app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   // Scope variables
   $scope.facebookApiToken = '';
   $scope.objects = [];
@@ -19,10 +21,6 @@ module.controller('MainCtrl', function ($scope, $http) {
       }
     }
   };
-
-  // Facebook API config
-  var apiBaseUrl = 'https://graph.facebook.com/me/';
-  var apiRateLimit = 1000; // Rate limit for API requests in miliseconds
 
   /*
   * Defines if Facebook data can be loaded
@@ -43,18 +41,14 @@ module.controller('MainCtrl', function ($scope, $http) {
     $scope.objects = [];
     $scope.errors = [];
 
-    // Remove headers not allowed by the API and sent by $http by default 
-    $http.defaults.headers.common['X-Requested-With'] = null;
+    var completedCount = 0;
+    var facebookApiInstance = facebookApi($scope.facebookApiToken);
 
-    // Load objects from Facebook API
-    var index = 0;
-    function sendNextRequest() {
-      // Set FB object to fetch
-      var facebookObject = facebookObjects[index];
-
+    _.each(facebookObjects, function(facebookObject) {
       // Send HTTP request
-      $http.get(apiBaseUrl + facebookObject.url + "?access_token=" + $scope.facebookApiToken)
-        .success(function(data, status, headers, config) {
+      facebookApiInstance.get('me/' + facebookObject.url, 
+        // Success callback
+        function(data, status, headers, config) {
           // Load object data 
           // - Include API response data from
           var resultObjects = data.data;
@@ -68,28 +62,22 @@ module.controller('MainCtrl', function ($scope, $http) {
           $scope.objects = $scope.objects.concat(resultObjects);
           
           // Update progress bar (progress in percent)
-          $scope.progress = (100*index)/(facebookObjects.length-1);
-          if ($scope.progress===100) $scope.progress = 0;
-        })
-        .error(function(data, status, headers, config) {
-          $scope.errors.push(data.error.message);
-          // Update progress bar (progress in percent)
-          $scope.progress = (100*index)/(facebookObjects.length-1);
-          if ($scope.progress===100) $scope.progress = 0;
-        });
-      
-      // Stop request interval if done
-      if (index >= facebookObjects.length-1) {
-        window.clearInterval(requestInterval);
-      } else {
-        index++;
-      }
-    }
+          completedCount += 1;
+          $scope.progress = (100*completedCount)/(facebookObjects.length-1);
+          if ($scope.progress >= 100) $scope.progress = 0;
 
-    // Schedule requests to avoid API request rate limiting
-    sendNextRequest();
-    var requestInterval = window.setInterval(sendNextRequest, apiRateLimit);
-    $scope.objectsUpdatedAt = new Date();
+          $scope.objectsUpdatedAt = new Date();
+        },
+        // Error callback
+        function(data, status, headers, config) {
+          $scope.errors.push(data.error.message);
+
+          // Update progress bar (progress in percent)
+          completedCount += 1;
+          $scope.progress = (100*completedCount)/(facebookObjects.length-1);
+          if ($scope.progress >= 100) $scope.progress = 0;
+        });
+    });
 
     // Helper function to get an object's attribute from its string notation
     function getNestedAttribute(object, attributeString) {

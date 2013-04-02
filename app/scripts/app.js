@@ -4,7 +4,10 @@
 * Facebook Data Search App
 */
 
-var app = angular.module('fbDataSearchApp', ['filters']);
+var app = angular.module('app', [
+  'filters.truncate', 'filters.attributeFilter',
+  'services.facebookApi'
+]);
 
 app.config(function ($routeProvider) {
   $routeProvider

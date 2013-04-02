@@ -65,7 +65,7 @@
 <hr>
 
 <div class="object"
-  ng-repeat="object in objects | filter: search.text | attributeToggle: search.attributes">
+  ng-repeat="object in objects | filter: search.text | attributeFilter: search.attributes">
   <div class="clearfix">
     <!-- Object info -->
     <div class="pull-left">
