@@ -10,6 +10,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   $scope.objects = [];
   $scope.objectsUpdatedAt = null;
   $scope.errors = [];
+  $scope.loading = false;
   $scope.progress = 0;
   $scope.search = {
     text: '',
@@ -27,7 +28,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   * Used to enable/disable the 'Load Facebook Data' button 
   */
   $scope.canLoadFacebookData = function(){
-    return ($scope.facebookApiToken.length > 0 && $scope.progress === 0);
+    return ($scope.facebookApiToken.length > 0 && $scope.loading == false );
   }
 
   /*
@@ -37,9 +38,11 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   * Objects to load are defined in config/facebook-objects.js as 'facebookObjects'
   */
   $scope.loadFacebookObjects = function(){
-    // Clear any errors
-    $scope.objects = [];
+    $scope.loading = true;
+    $scope.progress = 0;
+    
     $scope.errors = [];
+    $scope.objects = []; // TODO: Remove when objects persisted    
 
     var completedCalls = 0;
     var facebookApiInstance = facebookApi($scope.facebookApiToken);
@@ -48,31 +51,31 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
       // Send HTTP request
       facebookApiInstance.get('me/' + facebookObject.url, 
         // Success callback
-        function(data, status, headers, config, remainingCalls) {
+        function(data, status, headers, config, queue) {
           // Extend response objects with meta properties
           _.each(data.data, function(responseObject){
             _.extend(responseObject, {_type: facebookObject.url});
             facebookObject.preview = facebookObject.preview || 'name';
             _.extend(responseObject, {_preview: getNestedAttribute(responseObject, facebookObject.preview)});
           });
+
           // Load into scope
           $scope.objects = $scope.objects.concat(data.data);
-          
-          // Update progress bar (progress in percent)
-          completedCalls += 1;
-          $scope.progress = (100*completedCalls)/(completedCalls+remainingCalls);
-          if ($scope.progress >= 100) $scope.progress = 0;
-
           $scope.objectsUpdatedAt = new Date();
+
+          // Update progress 
+          completedCalls += 1;
+          $scope.progress = (100*completedCalls)/(completedCalls+queue.length);
+          $scope.loading = (queue.length > 0); 
         },
         // Error callback
-        function(data, status, headers, config, remainingCalls) {
+        function(data, status, headers, config, queue) {
           $scope.errors.push(data.error.message);
 
-          // Update progress bar (progress in percent)
+          // Update progress 
           completedCalls += 1;
-          $scope.progress = (100*completedCalls)/(completedCalls+remainingCalls);
-          if ($scope.progress >= 100) $scope.progress = 0;
+          $scope.progress = (100*completedCalls)/(completedCalls+queue.length);
+          $scope.loading = (queue.length > 0);
         });
     });
 

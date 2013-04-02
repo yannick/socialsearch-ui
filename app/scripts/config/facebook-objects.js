@@ -5,6 +5,11 @@
 * See https://developers.facebook.com/docs/reference/api
 *
 * The 'preview' attribute sets the object attribute to be shown as preview (defaults to 'name')
+*
+* All relevant Facebook user connections included, with the following exceptions: 
+*   - pokes: Excluded due to a bug in the API (wrong pagination returned by the Facebook API)
+*   - notifications: Requires the 'manage_notifications' permission
+*   - payments: Can only be called with an app access token
 */
 var facebookObjects = [
   { url: 'accounts'          },
@@ -28,13 +33,15 @@ var facebookObjects = [
   { url: 'movies'            },
   { url: 'music'             },
   { url: 'notes'             , preview: 'subject' },
+  //{ url: 'notifications' },
   { url: 'outbox'            , preview: 'message' },
+  //{ url: 'payments' },
   { url: 'photos'            , preview: 'picture' },
   { url: 'photos/uploaded'   , preview: 'picture' },
-  { url: 'pokes'             , preview: 'from.name' },
+  //{ url: 'pokes'             , preview: 'from.name' },
   { url: 'posts'             , preview: 'message' },
   { url: 'questions'         , preview: 'question' },
-  { url: 'score'             , preview: 'url' },
+  { url: 'scores'            , preview: 'application' },
   { url: 'statuses'          , preview: 'message' },
   { url: 'subscribedto'      },
   { url: 'subscribers'       },
