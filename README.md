@@ -1,9 +1,14 @@
-Facebook Data Search App 
-========================
+SocialSearch UI for Facebook
+============================
 
-Github repo for the Facebook Data Search App, built with AngularJS and the Facebook Graph API.
+An app to retrieve and view a user's available Facebook data, built with AngularJS and the Facebook Graph API.
 
 See a demo at http://www.animyeboah.com/projects/facebook-data-search/
+
+Facebook API limitations
+------------------------
+
+Facebook limits the allowed frequency of API calls and item size of batch calls. Limits for the call frequency and batch size are configured in `app/scripts/services/facebook-api.js`.
 
 Requirements
 ------------
