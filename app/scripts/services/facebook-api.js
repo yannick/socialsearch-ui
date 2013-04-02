@@ -20,7 +20,7 @@ module.factory('facebookApi', [
     var facebookApiFactory = function(apiAccessToken) {
       // Facebook API config
       var apiBaseUrl = 'https://graph.facebook.com/';
-      var batchSize = 10; // Size limit for batch calls
+      var batchSize = 5; // Size limit for batch calls
       var apiRateLimit = 1000; // Rate limit for API requests in miliseconds
 
       // Set headers for the API 

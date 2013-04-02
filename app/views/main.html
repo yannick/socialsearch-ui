@@ -54,7 +54,8 @@
   {{objects.length}} Results 
   <small class="muted"
     ng-show="objectsUpdatedAt">
-    Last updated {{objectsUpdatedAt.toTimeString()}}
+    last updated {{getLastUpdated()}} &middot; 
+    total crawl time {{getUpdateTime()}} seconds 
   </small>
   <small class="muted"
     ng-show="!objectsUpdatedAt">

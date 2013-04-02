@@ -8,6 +8,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   // Scope variables
   $scope.facebookApiToken = '';
   $scope.objects = [];
+  $scope.updateStartedAt = null;
   $scope.objectsUpdatedAt = null;
   $scope.errors = [];
   $scope.loading = false;
@@ -40,6 +41,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
   $scope.loadFacebookObjects = function(){
     $scope.loading = true;
     $scope.progress = 0;
+    $scope.updateStartedAt = new Date();
     
     $scope.errors = [];
     $scope.objects = []; // TODO: Remove when objects persisted    
@@ -79,6 +81,17 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
         });
     });
 
+    $scope.getUpdateTime = function() {
+      return ($scope.objectsUpdatedAt-$scope.updateStartedAt) / 1000;
+    };
+
+    $scope.getLastUpdated = function() {
+      if ($scope.objectsUpdatedAt)
+        return $scope.objectsUpdatedAt.toTimeString();
+      else 
+        return "never";
+    };
+
     // Helper function to get an object's attribute from its string notation
     function getNestedAttribute(object, attributeString) {
       var resultAttribute = object;
@@ -95,7 +108,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
       });
       return resultAttribute;
     }
-  }
+  };
 
   $scope.objectsUpdatedAtDisplay = function(){
     if (objectsUpdatedAt === null) return 'never';
