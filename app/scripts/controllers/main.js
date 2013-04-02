@@ -41,40 +41,37 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi) {
     $scope.objects = [];
     $scope.errors = [];
 
-    var completedCount = 0;
+    var completedCalls = 0;
     var facebookApiInstance = facebookApi($scope.facebookApiToken);
 
     _.each(facebookObjects, function(facebookObject) {
       // Send HTTP request
       facebookApiInstance.get('me/' + facebookObject.url, 
         // Success callback
-        function(data, status, headers, config) {
-          // Load object data 
-          // - Include API response data from
-          var resultObjects = data.data;
-          // - Extend with meta information
-          _.each(resultObjects, function(responseObject){
+        function(data, status, headers, config, remainingCalls) {
+          // Extend response objects with meta properties
+          _.each(data.data, function(responseObject){
             _.extend(responseObject, {_type: facebookObject.url});
             facebookObject.preview = facebookObject.preview || 'name';
             _.extend(responseObject, {_preview: getNestedAttribute(responseObject, facebookObject.preview)});
           });
-          // - Load into scope
-          $scope.objects = $scope.objects.concat(resultObjects);
+          // Load into scope
+          $scope.objects = $scope.objects.concat(data.data);
           
           // Update progress bar (progress in percent)
-          completedCount += 1;
-          $scope.progress = (100*completedCount)/(facebookObjects.length-1);
+          completedCalls += 1;
+          $scope.progress = (100*completedCalls)/(completedCalls+remainingCalls);
           if ($scope.progress >= 100) $scope.progress = 0;
 
           $scope.objectsUpdatedAt = new Date();
         },
         // Error callback
-        function(data, status, headers, config) {
+        function(data, status, headers, config, remainingCalls) {
           $scope.errors.push(data.error.message);
 
           // Update progress bar (progress in percent)
-          completedCount += 1;
-          $scope.progress = (100*completedCount)/(facebookObjects.length-1);
+          completedCalls += 1;
+          $scope.progress = (100*completedCalls)/(completedCalls+remainingCalls);
           if ($scope.progress >= 100) $scope.progress = 0;
         });
     });
