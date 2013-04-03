@@ -1,30 +1,17 @@
-
 <!-- Site header -->
-<h1 class="page-header">Facebook Data Search</h1>
+<h1 class="page-header">SocialSearch UI <small class="muted">for Facebook</small></h1>
 
 <!-- Navbar with search input -->
 <div class="navbar">
   <div class="navbar-inner">
     <form class="navbar-search pull-left inline">
-        <input class="search-query" type="text" placeholder="Search..." 
-          ng-model="search.text">
-        <label class="checkbox inline">
-          <input type="checkbox" checked 
-            ng-model="search.attributes._type.likes"> Likes
-        </label>
-        <label class="checkbox inline">
-          <input type="checkbox" checked 
-            ng-model="search.attributes._type.posts"> Posts
-        </label>
-        <label class="checkbox inline">
-          <input type="checkbox" checked 
-            ng-model="search.attributes._type._other"> Other
-        </label>
+      <input class="search-query" type="text" placeholder="Search..." 
+        ng-model="search">
     </form>
     <form class="navbar-form pull-right">
       <input class="" type="text" placeholder="Facebook API token"
         ng-model="facebookApiToken">
-      <button type="submit" class="btn"
+      <button type="submit" class="btn btn-primary"
         ng-click="load()"
         ng-disabled="!canLoad()">Load data</button>
       <button type="submit" class="btn"
@@ -52,7 +39,7 @@
   <small ng-repeat="error in errors">{{error}}<br></small>
 </div>
 
-<!-- List of result objects -->
+<!-- Information about resuts -->
 <p>
   {{objects.length}} results 
   <small class="muted">
@@ -63,37 +50,62 @@
 
 <hr>
 
-<div class="object"
-  ng-repeat="object in objects | filter: search.text | attributeFilter: search.attributes">
-  <div class="clearfix">
-    <!-- Object info -->
-    <div class="pull-left">
-      <b>{{object._type}}</b> 
-      <a class="muted" href="https://www.facebook.com/{{object.id}}" target="facebook">{{object.id}}</a></td>
-      <p
-        ng-show="object.picture">
-        <img alt="Picture of {{object._type}} object {{object.id}}"
-          ng-src="{{object.picture}}">
+<div class="row">
+
+  <!-- Sidebar -->
+  <div class="span3">
+    <!-- Facets -->
+    <form class="well">
+      <p class="muted">
+        Object types
+        <a href="" class="pull-right"
+          ng-click="toggleFacets()">Toggle all</a>
       </p>
-      <p
-        ng-show="!object.picture && object._preview">
-        {{object._preview | truncate:250}}
-      </p>
-      <p 
-        ng-show="!object.picture && !object._preview">
-        <i class="muted">No preview available</i>
-      </p>
+      <label class="checkbox"
+        ng-repeat="(facetName, facetValue) in facets">
+        <input type="checkbox"  
+          ng-model="facets[facetName]"> {{facetName}}
+      </label>
+    </form>
+  </div>
+
+  <!-- Main content -->
+  <div class="span9">
+    <!-- List of result objects -->
+    <div class="object"
+      ng-repeat="object in objects | filter: search | facetFilter:'_type':facets">
+      <div class="clearfix">
+        <!-- Object info -->
+        <div class="pull-left">
+          <b>{{object._type}}</b> 
+          <a class="muted" href="https://www.facebook.com/{{object.id}}" target="facebook">{{object.id}}</a></td>
+          <p
+            ng-show="object.picture">
+            <img alt="Picture of {{object._type}} object {{object.id}}"
+              ng-src="{{object.picture}}">
+          </p>
+          <p
+            ng-show="!object.picture && object._preview">
+            {{object._preview | truncate:250}}
+          </p>
+          <p 
+            ng-show="!object.picture && !object._preview">
+            <i class="muted">No preview available</i>
+          </p>
+        </div>
+        <!-- Object actions -->
+        <button class="btn pull-right"
+          ng-click="showDetails=!showDetails">
+          Show data
+        </button>
+      </div>
+      <!-- Object details -->
+      <div class="well"
+        ng-show="showDetails">
+        {{object}}
+      </div>
+      <hr>
     </div>
-    <!-- Object actions -->
-    <button class="btn pull-right"
-      ng-click="showDetails=!showDetails">
-      Show data
-    </button>
   </div>
-  <!-- Object details -->
-  <div class="well"
-    ng-show="showDetails">
-    {{object}}
-  </div>
-  <hr>
+
 </div>

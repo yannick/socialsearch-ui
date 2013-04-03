@@ -12,16 +12,14 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.errors = [];
   $scope.loading = false;
   $scope.progress = 0;
-  $scope.search = {
-    text: '',
-    attributes: {
-      _type: { 
-        likes: true,
-        posts: true,
-        _other: true
-      }
-    }
-  };
+  $scope.search = '';
+
+  // Build search facets
+  // Used to filter objects by type
+  $scope.facets = {};
+  _.each(_.pluck(facebookObjects, 'url'), function(facet){
+    $scope.facets[facet] = true;  
+  });
 
   /*
   * Defines if Facebook data can be loaded
@@ -96,6 +94,23 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     });
   };
 
+  // Helper function to get an object's attribute from its string notation
+  function getNestedAttribute(object, attributeString) {
+    var resultAttribute = object;
+    var attributeHierarchy = attributeString.split(".");
+    _.each(attributeHierarchy, function(attribute){
+      if (Array.isArray(resultAttribute)) {
+        resultAttribute = resultAttribute[0];
+      }
+      if (resultAttribute != null && typeof(resultAttribute[attribute]) !== 'undefined') {
+        resultAttribute = resultAttribute[attribute];
+      } else {
+        resultAttribute = null;
+      }
+    });
+    return resultAttribute;
+  }
+
   /*
   * Resets the local storage and scope objects
   */
@@ -128,24 +143,16 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
       return "never";
   };
 
-  // Helper function to get an object's attribute from its string notation
-  function getNestedAttribute(object, attributeString) {
-    var resultAttribute = object;
-    var attributeHierarchy = attributeString.split(".");
-    _.each(attributeHierarchy, function(attribute){
-      if (Array.isArray(resultAttribute)) {
-        resultAttribute = resultAttribute[0];
-      }
-      if (resultAttribute != null && typeof(resultAttribute[attribute]) !== 'undefined') {
-        resultAttribute = resultAttribute[attribute];
-      } else {
-        resultAttribute = null;
-      }
+  /*
+  * Toogles all facets' value between true and false
+  * depending on the value of the first facet 
+  */
+  $scope.toggleFacets = function() {
+    var firstFacet = !!$scope.facets[_.keys($scope.facets)[0]];
+    console.log(firstFacet);
+    _.each($scope.facets, function(facet, key) {
+      $scope.facets[key] = !firstFacet;
+      console.log(facet);
     });
-    return resultAttribute;
-  }
-
-  $scope.objectsUpdatedAtDisplay = function(){
-    if (objectsUpdatedAt === null) return 'never';
   };
 });

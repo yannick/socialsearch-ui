@@ -5,7 +5,7 @@
 */
 
 var app = angular.module('app', [
-  'filters.truncate', 'filters.attributeFilter',
+  'filters.truncate', 'filters.facetFilter',
   'services.facebookApi', 
   'LocalStorageModule'
 ]);
