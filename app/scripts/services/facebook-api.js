@@ -80,7 +80,7 @@ module.factory('facebookApi', [
             });
           })
           .error(function(data, status, headers, config){
-            batchCallbacks[0](data, status, headers, config, batchItemQueue);
+            batchCallbacks[0].errorCallback(data, status, headers, config, batchItemQueue);
           });
 
         // Continue to process the queue if batch items remaining

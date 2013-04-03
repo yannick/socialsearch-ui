@@ -24,9 +24,12 @@
     <form class="navbar-form pull-right">
       <input class="" type="text" placeholder="Facebook API token"
         ng-model="facebookApiToken">
-      <button class="btn"
-        ng-click="loadFacebookObjects()"
-        ng-disabled="!canLoadFacebookData()">Load Facebook data</button>
+      <button type="submit" class="btn"
+        ng-click="load()"
+        ng-disabled="!canLoad()">Load data</button>
+      <button type="submit" class="btn"
+        ng-click="reset()"
+        ng-disabled="loading">Reset</button>
     </form>
     <ul class="nav pull-right"><li class="divider-vertical"></li></ul>
   </div>
@@ -51,15 +54,10 @@
 
 <!-- List of result objects -->
 <p>
-  {{objects.length}} Results 
-  <small class="muted"
-    ng-show="objectsUpdatedAt">
-    last updated {{getLastUpdated()}} &middot; 
-    total crawl time {{getUpdateTime()}} seconds 
-  </small>
-  <small class="muted"
-    ng-show="!objectsUpdatedAt">
-    Enter Facebook API access token to load data
+  {{objects.length}} results 
+  <small class="muted">
+    last updated {{getLastUpdated()}}
+    <span ng-show="updateStartedAt!=null">&middot; crawl time {{getUpdateTime()}} seconds</span>
   </small>
 </p>
 

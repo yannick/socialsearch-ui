@@ -6,7 +6,8 @@
 
 var app = angular.module('app', [
   'filters.truncate', 'filters.attributeFilter',
-  'services.facebookApi'
+  'services.facebookApi', 
+  'LocalStorageModule'
 ]);
 
 app.config(function ($routeProvider) {
