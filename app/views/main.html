@@ -4,53 +4,97 @@
 <!-- Navbar with search input -->
 <div class="navbar">
   <div class="navbar-inner">
-    <form class="navbar-search pull-left inline">
-      <input class="search-query" type="text" placeholder="Search..." 
-        ng-model="search">
+    <form class="navbar-form form-search pull-left">
+      <div class="input-append">
+        <input class="search-query" type="search" placeholder="Search..." 
+          ng-model="search"
+          ng-disabled="loading || indexing || searching || objects.length == 0">
+        <button class="btn"
+          ng-click="searchObjects(search)"
+          ng-disabled="loading || indexing || searching || objects.length == 0">Search</button>
+        <button class="btn-link muted"
+          ng-show="search!=''"
+          ng-click="search=''; searchObjects(search)">clear search</button>  
+      </div>
     </form>
     <form class="navbar-form pull-right">
       <input class="" type="text" placeholder="Facebook API token"
-        ng-model="facebookApiToken">
+        ng-model="facebookApiToken"
+        ng-disabled="loading || indexing || searching">
       <button type="submit" class="btn btn-primary"
         ng-click="load()"
-        ng-disabled="!canLoad()">Load data</button>
+        ng-disabled="loading || indexing || searching">Load data</button>
       <button type="submit" class="btn"
         ng-click="reset()"
-        ng-disabled="loading">Reset</button>
+        ng-disabled="loading || indexing || searching">Reset</button>
     </form>
     <ul class="nav pull-right"><li class="divider-vertical"></li></ul>
   </div>
 </div>
 
-<!-- Progress bar, shown when updating -->
+<!-- API access token notice -->
+<div class="alert alert-info"
+  ng-show="!loading && objects.length == 0">Please enter a <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Facebook API access token</a> above and load your Facebook data.
+</div>
+
+<!-- Progress bars -->
+<div class="alert alert-info"
+  ng-show="loading || indexing">
+  <b>This may take a while.</b> Sit back and relax while your data is being retrieved from Facebook and made searchable.
+</div>
+
+<!-- when indexing -->
 <div
   ng-show="loading">
   <p>Loading Facebook data...</p>
 
   <div class="progress progress-striped active">
-    <div class="bar" style="width: {{progress}}%;"></div>
+    <div class="bar" style="width: {{progress*100}}%;"></div>
+  </div>
+</div>
+
+<!-- when indexing -->
+<div
+  ng-show="indexing">
+  <p>Indexing data for search...</p>
+
+  <div class="progress progress-striped active">
+    <div class="bar" style="width: {{indexingProgress*100}}%;"></div>
   </div>
 </div>
 
 <!-- Error messages, shown when errors occurred -->
-<div class="alert alert-error"
+<div class="alert alert-warning"
   ng-show="errors.length > 0">
-  <strong>Oh snap!</strong> An error ocurred while fetching your data from Facebook. Please try again.<br>
+  <strong>Some errors ocurred.</strong> This is probably caused by Facebook. You may try resetting and reloading later again.<br>
   <small ng-repeat="error in errors">{{error}}<br></small>
 </div>
 
 <!-- Information about resuts -->
 <p>
-  {{objects.length}} results 
+  <span ng-show="searching">Searching...</span>
+  <span ng-show="!searching">{{searchedObjects.length}} results</span>
   <small class="muted">
+    of {{objects.length}} found objects
+    &middot;
     last updated {{getLastUpdated()}}
-    <span ng-show="updateStartedAt!=null">&middot; crawl time {{getUpdateTime()}} seconds</span>
+    <span 
+      ng-show="getLoadingTime()">
+      &middot; 
+      crawl time {{getLoadingTime()}} seconds
+    </span>
+    <span 
+      ng-show="getIndexingTime()">
+      &middot; 
+      indexing time {{getIndexingTime()}} seconds
+    </span>
   </small>
 </p>
 
 <hr>
 
-<div class="row">
+<div class="row"
+  ng-show="objects.length > 0">
 
   <!-- Sidebar -->
   <div class="span3">
@@ -73,7 +117,7 @@
   <div class="span9">
     <!-- List of result objects -->
     <div class="object"
-      ng-repeat="object in objects | filter: search | facetFilter:'_type':facets">
+      ng-repeat="object in searchedObjects | facetFilter:'_type':facets | limitTo:500">
       <div class="clearfix">
         <!-- Object info -->
         <div class="pull-left">
@@ -95,9 +139,7 @@
         </div>
         <!-- Object actions -->
         <button class="btn pull-right"
-          ng-click="showDetails=!showDetails">
-          Show data
-        </button>
+          ng-click="showDetails=!showDetails">Show data</button>
       </div>
       <!-- Object details -->
       <div class="well"
@@ -106,6 +148,10 @@
       </div>
       <hr>
     </div>
+
+    <small class="muted"
+      ng-show="searchedObjects.length > 500"><i>First 500 results shown</i></small>
+    <br><br>
   </div>
 
 </div>

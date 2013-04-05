@@ -1,12 +1,13 @@
 'use strict';
 
 /*
-* Facebook Data Search App
+* App module
+* Loads module dependencies and sets up routing
 */
 
 var app = angular.module('app', [
   'filters.truncate', 'filters.facetFilter',
-  'services.facebookApi', 
+  'services.facebookApi', 'services.fullproofSearchEngine',
   'LocalStorageModule'
 ]);
 

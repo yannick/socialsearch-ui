@@ -4,11 +4,11 @@
 * Service for retrieving objects via the Facebook Graph API asynchronously
 * - Implements a rate limit for API requests
 * - Implements transparent paging to load all objects
-* - Automatically uses batch calls to minimize requests 
+* - Automatically uses batch calls to minimize the number of requests 
 * 
 * Usage in controllers: 
 *   var myApi = facebookApi(FACEBOOK_API_ACCESS_TOKEN);
-*   myApi.get(objectPath, successCallback, errorCallback);  
+*   myApi.get(objectPath, successCallback, errorCallback, remainingCalls);
 */
 
 var module = angular.module('services.facebookApi', []);
@@ -20,7 +20,7 @@ module.factory('facebookApi', [
     var facebookApiFactory = function(apiAccessToken) {
       // Facebook API config
       var apiBaseUrl = 'https://graph.facebook.com/';
-      var batchSize = 5; // Size limit for batch calls
+      var batchSize = 15; // Size limit for batch calls
       var apiRateLimit = 1000; // Rate limit for API requests in miliseconds
 
       // Set headers for the API 
@@ -30,9 +30,12 @@ module.factory('facebookApi', [
       // Queue of items and callbacks for batch call
       var batchItemQueue = [];
       var batchItemCallbacks = [];
+      var remainingCalls = 0;
 
-      // Works the queue to send $http requests for each item in the queue,
-      // transparently handling the rate limit 
+      /* 
+       * Works the queue to send $http requests for each item in the queue,
+       * transparently handling the rate limit
+       */
       function processQueue() {
         // Get next batch
         var batch = batchItemQueue.slice(0, batchSize); 
@@ -45,6 +48,8 @@ module.factory('facebookApi', [
         $http.post(apiBaseUrl, 'access_token=' + apiAccessToken + '&batch=' + angular.toJson(batch))
           .success(function(data, status, headers, config){
             _.each(data, function(dataItem, index){
+              remainingCalls -= 1;
+              
               // Error if no response for batch item 
               if ( dataItem === null ) {
                 batchCallbacks[index].errorCallback(
@@ -64,6 +69,7 @@ module.factory('facebookApi', [
                 relativeUrl = dataItem.body.paging.next.replace('http://graph.facebook.com/', '');
                 
                 // Add call with callbacks from original request
+                remainingCalls += 1;
                 batchItemQueue.push({method: 'GET', relative_url: encodeURIComponent(relativeUrl)});
                 batchItemCallbacks.push({
                   successCallback: batchCallbacks[index].successCallback, 
@@ -74,13 +80,14 @@ module.factory('facebookApi', [
 
               // Callbacks
               if (dataItem.body.error !== undefined)
-                batchCallbacks[index].errorCallback(dataItem.body, status, headers, config, batchItemQueue);
+                batchCallbacks[index].errorCallback(dataItem.body, status, headers, config, 0+remainingCalls);
               else if (dataItem.body.data.length >= 0)
-                batchCallbacks[index].successCallback(dataItem.body, status, headers, config, batchItemQueue);
+                batchCallbacks[index].successCallback(dataItem.body, status, headers, config, 0+remainingCalls);
             });
           })
           .error(function(data, status, headers, config){
-            batchCallbacks[0].errorCallback(data, status, headers, config, batchItemQueue);
+            remainingCalls -= batch.length;
+            batchCallbacks[0].errorCallback(data, status, headers, config, 0+remainingCalls);
           });
 
         // Continue to process the queue if batch items remaining
@@ -88,18 +95,35 @@ module.factory('facebookApi', [
         if (batchItemQueue.length > 0) startQueue();
       }
 
+      /*
+       * Starts processing the queue if not already started
+       */
       function startQueue() {
         if (window.queueTimeout === undefined) 
           window.queueTimeout = window.setTimeout(processQueue, apiRateLimit);
       }
 
-      // API methods
+      /*
+       * Stops processing the queue
+       */
+      function stopQueue() {
+        window.clearTimeout(queueTimeout); window.queueTimeout = undefined;
+      }
+
+      // Public methods
       var facebookApi = {
+        // Adds an API call to the queue
+        // Calls 'successCallback' or 'errorCallback' when a response has been received
         get: function(path, successCallback, errorCallback) {
           // Add batch item to queue
+          remainingCalls += 1;
           batchItemQueue.push({method: 'GET', relative_url: path});
           batchItemCallbacks.push({successCallback: successCallback, errorCallback: errorCallback});
           startQueue();
+        },
+        // Stops all queued API calls
+        stop: function() {
+          stopQueue();
         }
       }
 
