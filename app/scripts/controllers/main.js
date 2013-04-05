@@ -146,7 +146,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
           completedCalls += 1;
           $scope.progress = completedCalls/(completedCalls+remainingCalls);
           $scope.loading = (remainingCalls > 0);
-          $scope.indexing = !$scope.loading;
 
           // Update timer
           $scope.loadingFinishedAt = new Date().getTime();
@@ -168,7 +167,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
           completedCalls += 1;
           $scope.progress = completedCalls/(completedCalls+remainingCalls);
           $scope.loading = (remainingCalls > 0);
-          $scope.indexing = !$scope.loading;
 
           // Update timer
           $scope.loadingFinishedAt = new Date().getTime();
