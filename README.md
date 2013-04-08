@@ -33,9 +33,13 @@ Deploying:
 
 3. Run `grunt` to receive a `/dist` folder ready for deployment
 
-API settings
-------------
+Configuration
+-------------
 
-Facebook object types to load are defined in `app/scripts/config/facebook-objects.js`. Some object types require an access token with extended permissions.
+There is a configuration file `app/config.js` which contains:
 
-Limits for the call frequency and batch size are configured in `app/scripts/services/facebook-api.js`.
+- A list of all objects to be fetched from the Facebook Graph API
+- The keys of Facebook objects to be indexed
+- Fine-tuning for the Facebook API
+ - Rate limit for API calls
+ - Size limit for batch calls

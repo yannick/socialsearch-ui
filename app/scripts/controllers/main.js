@@ -2,11 +2,13 @@
 
 /**
 * Main controller
-* Requires 'facebookObjects' to be loaded from config/facebook-objects.js
 */
-app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageService, fullproofSearchEngine) {
+app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageService, fullproofSearchEngine, FACEBOOK_OBJECTS, FACEBOOK_OBJECT_INDEXABLE_KEYS) {
   // Token
   $scope.facebookApiToken = localStorageService.get('facebookApiToken') || '';
+
+  // Errors
+  $scope.errors = [];
   
   // Objects and search results
   // Objects are saved in local storage separately with their 'id' as key
@@ -15,7 +17,12 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.objectIds = angular.fromJson(localStorageService.get('objectIds')) || [];
   $scope.objects = [];
   _.each($scope.objectIds, function(objectId) {
-    $scope.objects.push(angular.fromJson(localStorageService.get(objectId)));
+    var storageObject = angular.fromJson(localStorageService.get(objectId));
+    if (storageObject == null) {
+      console.log("Error loading object from localStorage");
+    } else {
+      $scope.objects.push(storageObject);
+    }
   });
   $scope.searchedObjects = $scope.objects;
 
@@ -23,9 +30,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.loadingStartedAt = null;
   $scope.loadingFinishedAt = localStorageService.get('loadingFinishedAt') || null;
   $scope.indexingFinishedAt = null;
-  
-  // Errors
-  $scope.errors = [];
   
   // Progress
   $scope.loading = false;
@@ -38,10 +42,10 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.searching = false;
 
   // Facets
-  // Facets are generated for the '_type' attribute of all objects in 'facebookObjects'
+  // Facets are generated for the '_type' attribute of all objects in FACEBOOK_OBJECTS
   // Used to filter objects by type
   $scope.facets = {};
-  _.each(_.pluck(facebookObjects, 'url'), function(facet){
+  _.each(_.pluck(FACEBOOK_OBJECTS, 'url'), function(facet){
     $scope.facets[facet] = true;  
   });
 
@@ -50,7 +54,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   var facebookApiInstance = null;
 
   // Load the search engine
-  var searchEngine = fullproofSearchEngine($scope.objects, 'facebookObjects',
+  var searchEngine = fullproofSearchEngine($scope.objects, FACEBOOK_OBJECT_INDEXABLE_KEYS, 'facebookObjects',
     // Success callback
     function() { 
       $scope.indexingProgress = 1;
@@ -99,7 +103,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
    * Loads objects via the Facebook Graph API into $scope.objects
    * 
    * Requires a valid $scope.facebookApiToken
-   * Objects to load are defined in config/facebook-objects.js as 'facebookObjects'
+   * Objects to load are defined in config.js FACEBOOK_OBJECTS
    */
   $scope.load = function(){
     // Reset search, progress, errors and timer
@@ -118,7 +122,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     if ($scope.loadingFinishedAt)
       var since = Math.floor(parseInt($scope.loadingFinishedAt)/1000);
     
-    _.each(facebookObjects, function(facebookObject) {
+    _.each(FACEBOOK_OBJECTS, function(facebookObject) {
       // Send HTTP request
       var requestUrl = 'me/' + facebookObject.url;
   
@@ -153,6 +157,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
           // If done, start indexing
           if (!$scope.loading) {
+            console.log("DONE");
             searchEngine.start();
           }
         },
@@ -174,6 +179,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
           // If done, start indexing
           if (!$scope.loading) {
+            console.log("DONE");
             searchEngine.start();
           }
         });

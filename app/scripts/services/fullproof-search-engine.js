@@ -5,11 +5,15 @@
  * Provides a FullProof search engine
  *
  * Usage: 
- *  searchEngine = fullproofSearchEngine(data, databaseName, successCallback, errorCallback); 
+ *  searchEngine = fullproofSearchEngine(data, indexableKeys, databaseName, 
+ *    successCallback, errorCallback); 
  *  searchEngine.search(searchTerm, callback);
  *
  *  'data' must be an array of objects
- *  'callback' will receive the matching objects from 'data' as argument
+ *  'indexableKeys' must be an array of all keys of 'data' of which the values shall be 
+ *    indexed (keys may be nested)
+ *  'errorCallback' or 'successCallback' will receive the matching objects from 'data'
+ *    as single argument
  */
 
 var module = angular.module('services.fullproofSearchEngine', []);
@@ -17,14 +21,14 @@ var module = angular.module('services.fullproofSearchEngine', []);
 module.factory('fullproofSearchEngine', [  
   function() {
 
-    var fullproofFactory = function(data, databaseName, successCallback, errorCallback, progressCallback) {
+    var fullproofFactory = function(data, indexableKeys, databaseName, successCallback, errorCallback, progressCallback) {
       // Setup search engine
       var searchEngine = new fullproof.BooleanEngine();
 
       // Define an index
       var index = {
         name: "normalindex",
-        analyzer: new fullproof.StandardAnalyzer(fullproof.normalizer.to_lowercase_nomark, fullproof.normalizer.remove_duplicate_letters),
+        analyzer: new fullproof.StandardAnalyzer(fullproof.normalizer.to_lowercase_nomark),
         capabilities: new fullproof.Capabilities().setUseScores(false).setDbName(databaseName),
         initializer: initializer
       };
@@ -37,12 +41,29 @@ module.factory('fullproofSearchEngine', [
         var texts = [];
         var keys = [];
 
+        // Helper function, recursively loads an object's string values of predefined keys
+        // Valid keys are predefined as 'indexableKeys'
+        function loadIndexableTexts(object, indexableKeys, objectTexts) {
+          objectTexts = objectTexts || [];
+          if (object === null) return objectTexts;
+
+          _.each(_.keys(object), function(key) {
+            if (typeof(object[key]) == "object") {
+              loadIndexableTexts(object[key], indexableKeys, objectTexts);
+            } else if (_.contains(indexableKeys, key) && typeof(object[key]) == "string") {
+              objectTexts.push(object[key]);
+            }
+          });
+
+          return objectTexts;
+        }
+
         _.each(data, function(item, i) {
           // Extract all keys and values as text from the item's JSON
           // removing any special characters 
-          var text = angular.toJson(item).split(/[\[\]\{\}\:\"\s\n]|\\n|\\"+/).join(" ");
+          var objectTexts = loadIndexableTexts(item, indexableKeys);
           keys.push(i); 
-          texts.push(text);
+          texts.push(objectTexts.join(" "));
         });
 
         injector.injectBulk(texts, keys, callback, progressCallback);

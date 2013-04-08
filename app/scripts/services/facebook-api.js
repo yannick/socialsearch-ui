@@ -13,15 +13,14 @@
 
 var module = angular.module('services.facebookApi', []);
 
-module.factory('facebookApi', [ 
-  '$http',  
-  function($http) {
+module.factory('facebookApi',
+  function($http, FACEBOOK_API_RATE_LIMIT, FACEBOOK_API_BATCH_SIZE) {
 
     var facebookApiFactory = function(apiAccessToken) {
       // Facebook API config
       var apiBaseUrl = 'https://graph.facebook.com/';
-      var batchSize = 15; // Size limit for batch calls
-      var apiRateLimit = 1000; // Rate limit for API requests in miliseconds
+      var batchSize = FACEBOOK_API_BATCH_SIZE; // Size limit for batch calls
+      var apiRateLimit = FACEBOOK_API_RATE_LIMIT; // Rate limit for API requests in miliseconds
 
       // Set headers for the API 
       $http.defaults.headers.common['X-Requested-With'] = null;
@@ -132,4 +131,4 @@ module.factory('facebookApi', [
 
     return facebookApiFactory;
   }
-]);
+);
