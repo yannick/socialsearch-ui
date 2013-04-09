@@ -7,8 +7,20 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   // Token
   $scope.facebookApiToken = localStorageService.get('facebookApiToken') || '';
 
-  // Errors
+  // Notifications
+  $scope.warnings = [];
   $scope.errors = [];
+
+  // Handle broadcasted notifications
+  $scope.$on('LocalStorageModule.notification.error', function(event, message) {
+   if (!_.contains($scope.errors, message)) $scope.errors.push(message);
+  });
+  $scope.$on('app.notification.warning', function(event, message) {
+    if (!_.contains($scope.warnings, message)) $scope.warnings.push(message);
+  });
+  $scope.$on('app.notification.error', function(event, message) {
+    if (!_.contains($scope.errors, message)) $scope.errors.push(message);
+  });
   
   // Objects and search results
   // Objects are saved in local storage separately with their 'id' as key
@@ -18,9 +30,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.objects = [];
   _.each($scope.objectIds, function(objectId) {
     var storageObject = angular.fromJson(localStorageService.get(objectId));
-    if (storageObject == null) {
-      $scope.errors.push("Error loading from localStorage");
-    } else {
+    if (storageObject !== null) {
       $scope.objects.push(storageObject);
     }
   });
@@ -110,6 +120,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     $scope.searchedObjects = $scope.objects;
     $scope.progress = 0;
     $scope.errors = [];
+    $scope.warings = [];
     $scope.loading = true;
     $scope.loadingStartedAt = new Date().getTime();
 
@@ -142,9 +153,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
               $scope.objects.push(responseObject);
               localStorageService.add('objectIds', angular.toJson($scope.objectIds));
               localStorageService.add(responseObject.id, angular.toJson(responseObject));
-            
-              ///
-              if (angular.fromJson(localStorageService.get(responseObject.id))==null) debugger;
             }
           });
 
@@ -163,9 +171,9 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
         // Error callback
         function(data, status, headers, config) {
           if ( data.error !== undefined )
-            $scope.errors.push(data.error.message);
+            $scope.$broadcast('app.notification.warning', data.error.message);
           else
-            $scope.errors.push("No network connectivity or unknown error.");
+            $scope.$broadcast('app.notification.warning', 'No network connectivity or unknown error');
 
           // Update progress 
           completedCalls += 1;
@@ -232,6 +240,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
     // Reset errors
     $scope.errors = [];
+    $scope.Warnings = [];
     
     // Reset progress
     $scope.loading = false;

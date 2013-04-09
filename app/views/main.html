@@ -32,18 +32,30 @@
   </div>
 </div>
 
-<!-- API access token notice -->
-<div class="alert alert-info"
-  ng-show="!loading && objects.length == 0">Please enter a <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Facebook API access token</a> above and load your Facebook data.
-</div>
-
-<!-- Progress bars -->
+<!-- Notifications -->
 <div class="alert alert-info"
   ng-show="loading || indexing">
   <b>This may take a while.</b> Sit back and relax while your data is being retrieved from Facebook and made searchable.
 </div>
 
-<!-- when indexing -->
+<div class="alert alert-info"
+  ng-show="!loading && objects.length == 0">Please enter a <a href="https://developers.facebook.com/tools/explorer/" target="_blank">Facebook API access token</a> above and load your Facebook data.
+</div>
+
+<div class="alert alert-error"
+  ng-show="errors.length > 0">
+  <strong>Some errors ocurred while loading your data.</strong><br>
+  <small ng-repeat="error in errors">{{error}}<br></small>
+</div>
+
+<div class="alert alert-warning"
+  ng-show="warnings.length > 0">
+  <strong>Your loaded data may be incomplete.</strong> This is probably caused by Facebook. You may try resetting and reloading later again.<br>
+  <small ng-repeat="warning in warnings">{{warning}}<br></small>
+</div>
+
+<!-- Progress bars -->
+<!-- ...when loading -->
 <div
   ng-show="loading">
   <p>Loading Facebook data...</p>
@@ -52,8 +64,7 @@
     <div class="bar" style="width: {{progress*100}}%;"></div>
   </div>
 </div>
-
-<!-- when indexing -->
+<!-- ...when indexing -->
 <div
   ng-show="indexing">
   <p>Indexing data for search...</p>
@@ -61,13 +72,6 @@
   <div class="progress progress-striped active">
     <div class="bar" style="width: {{indexingProgress*100}}%;"></div>
   </div>
-</div>
-
-<!-- Error messages, shown when errors occurred -->
-<div class="alert alert-warning"
-  ng-show="errors.length > 0">
-  <strong>Some errors ocurred.</strong> This is probably caused by Facebook. You may try resetting and reloading later again.<br>
-  <small ng-repeat="error in errors">{{error}}<br></small>
 </div>
 
 <!-- Information about resuts -->

@@ -49,45 +49,44 @@ module.factory('facebookApi',
         $http.post(apiBaseUrl, 'access_token=' + apiAccessToken + '&batch=' + angular.toJson(batch))
           .success(function(data, status, headers, config) {
             _.each(data, function(dataItem, index) {
-              // Error if no response for batch item 
+              remainingCalls -= 1;
+
               if ( dataItem === null ) {
+                // Error if no response for batch item 
                 batchCallbacks[index].errorCallback(
                   {error: {message: "Batch call only partially processed."}}, {}, {}, {}, 
                   batchItemQueue
                 );
-                return;
-              }
+              } else {
+                // Convert response to JSON
+                dataItem.body = angular.fromJson(dataItem.body);
 
-              // Convert response to JSON
-              dataItem.body = angular.fromJson(dataItem.body);
+                // Send additional requests for next page (pagination)
+                // See https://developers.facebook.com/docs/reference/api/pagination/
+                if ( dataItem.body.paging !== undefined && dataItem.body.paging.next !== undefined ) {
+                  var relativeUrl = dataItem.body.paging.next.replace(apiBaseUrl, '');
+                  relativeUrl = dataItem.body.paging.next.replace('http://graph.facebook.com/', '');
+                  
+                  // Add call with callbacks from original request
+                  remainingCalls += 1;
+                  batchItemQueue.push({method: 'GET', relative_url: encodeURIComponent(relativeUrl)});
+                  batchItemCallbacks.push({
+                    successCallback: batchCallbacks[index].successCallback, 
+                    errorCallback: batchCallbacks[index].errorCallback
+                  });
+                  startQueue();
+                };
 
-              // Send additional requests for next page (pagination)
-              // See https://developers.facebook.com/docs/reference/api/pagination/
-              if ( dataItem.body.paging !== undefined && dataItem.body.paging.next !== undefined ) {
-                var relativeUrl = dataItem.body.paging.next.replace(apiBaseUrl, '');
-                relativeUrl = dataItem.body.paging.next.replace('http://graph.facebook.com/', '');
-                
-                // Add call with callbacks from original request
-                remainingCalls += 1;
-                batchItemQueue.push({method: 'GET', relative_url: encodeURIComponent(relativeUrl)});
-                batchItemCallbacks.push({
-                  successCallback: batchCallbacks[index].successCallback, 
-                  errorCallback: batchCallbacks[index].errorCallback
-                });
-                startQueue();
-              };
-
-              // Callbacks
-              if (dataItem.body.error !== undefined)
-                batchCallbacks[index].errorCallback(dataItem.body, status, headers, config);
-              else if (dataItem.body.data.length >= 0)
-                batchCallbacks[index].successCallback(dataItem.body, status, headers, config);
+                // Callbacks
+                if (dataItem.body.error !== undefined)
+                  batchCallbacks[index].errorCallback(dataItem.body, status, headers, config);
+                else if (dataItem.body.data.length >= 0)
+                  batchCallbacks[index].successCallback(dataItem.body, status, headers, config);
+              }             
             });
-
-            remainingCalls -= batch.length;
           })
           .error(function(data, status, headers, config){
-            remainingCalls -= currentBatchSize;
+            remainingCalls -= batch.length;
             batchCallbacks[0].errorCallback(data, status, headers, config);
           });
 
