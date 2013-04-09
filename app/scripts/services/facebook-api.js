@@ -8,7 +8,9 @@
 * 
 * Usage in controllers: 
 *   var myApi = facebookApi(FACEBOOK_API_ACCESS_TOKEN);
-*   myApi.get(objectPath, successCallback, errorCallback, remainingCalls);
+*   myApi.get(objectPath, successCallback, errorCallback);
+*   myApi.stop(); // optional, stop all unsent calls
+*   myApi.remainingCalls(); // number of remaining calls
 */
 
 var module = angular.module('services.facebookApi', []);
@@ -45,10 +47,8 @@ module.factory('facebookApi',
 
         // Load all items in queue into one batch call: 
         $http.post(apiBaseUrl, 'access_token=' + apiAccessToken + '&batch=' + angular.toJson(batch))
-          .success(function(data, status, headers, config){
-            _.each(data, function(dataItem, index){
-              remainingCalls -= 1;
-              
+          .success(function(data, status, headers, config) {
+            _.each(data, function(dataItem, index) {
               // Error if no response for batch item 
               if ( dataItem === null ) {
                 batchCallbacks[index].errorCallback(
@@ -79,14 +79,16 @@ module.factory('facebookApi',
 
               // Callbacks
               if (dataItem.body.error !== undefined)
-                batchCallbacks[index].errorCallback(dataItem.body, status, headers, config, 0+remainingCalls);
+                batchCallbacks[index].errorCallback(dataItem.body, status, headers, config);
               else if (dataItem.body.data.length >= 0)
-                batchCallbacks[index].successCallback(dataItem.body, status, headers, config, 0+remainingCalls);
+                batchCallbacks[index].successCallback(dataItem.body, status, headers, config);
             });
+
+            remainingCalls -= batch.length;
           })
           .error(function(data, status, headers, config){
-            remainingCalls -= batch.length;
-            batchCallbacks[0].errorCallback(data, status, headers, config, 0+remainingCalls);
+            remainingCalls -= currentBatchSize;
+            batchCallbacks[0].errorCallback(data, status, headers, config);
           });
 
         // Continue to process the queue if batch items remaining
@@ -123,6 +125,10 @@ module.factory('facebookApi',
         // Stops all queued API calls
         stop: function() {
           stopQueue();
+        },
+        // Get the current number of remaining calls
+        remainingCalls: function() {
+          return remainingCalls;
         }
       }
 

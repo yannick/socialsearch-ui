@@ -19,7 +19,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   _.each($scope.objectIds, function(objectId) {
     var storageObject = angular.fromJson(localStorageService.get(objectId));
     if (storageObject == null) {
-      console.log("Error loading object from localStorage");
+      $scope.errors.push("Error loading from localStorage");
     } else {
       $scope.objects.push(storageObject);
     }
@@ -56,7 +56,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   // Load the search engine
   var searchEngine = fullproofSearchEngine($scope.objects, FACEBOOK_OBJECT_INDEXABLE_KEYS, 'facebookObjects',
     // Success callback
-    function() { 
+    function() {
       $scope.indexingProgress = 1;
       $scope.indexing = false;
       $scope.indexingFinishedAt = new Date().getTime();
@@ -64,11 +64,10 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     },
     // Error callback
     function() {
-      $scope.errors.push("Error while indexing.");
       $scope.$apply();
     },
     // Progress callback
-    function(progress) { 
+    function(progress) {
       $scope.indexing = true;
       $scope.indexingProgress = progress;
       $scope.indexingFinishedAt = new Date().getTime();
@@ -130,7 +129,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
       facebookApiInstance.get(requestUrl, 
         // Success callback
-        function(data, status, headers, config, remainingCalls) {
+        function(data, status, headers, config) {
           _.each(data.data, function(responseObject){
             // Extend response objects with meta properties
             _.extend(responseObject, {_type: facebookObject.url});
@@ -143,26 +142,26 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
               $scope.objects.push(responseObject);
               localStorageService.add('objectIds', angular.toJson($scope.objectIds));
               localStorageService.add(responseObject.id, angular.toJson(responseObject));
+            
+              ///
+              if (angular.fromJson(localStorageService.get(responseObject.id))==null) debugger;
             }
           });
 
           // Update progress
           completedCalls += 1;
-          $scope.progress = completedCalls/(completedCalls+remainingCalls);
-          $scope.loading = (remainingCalls > 0);
+          $scope.progress = completedCalls/(completedCalls+facebookApiInstance.remainingCalls());
+          $scope.loading = (facebookApiInstance.remainingCalls() > 0);
 
           // Update timer
           $scope.loadingFinishedAt = new Date().getTime();
           localStorageService.add('loadingFinishedAt', $scope.loadingFinishedAt);
 
-          // If done, start indexing
-          if (!$scope.loading) {
-            console.log("DONE");
-            searchEngine.start();
-          }
+          // Check if done
+          if (!$scope.loading) onCompleted();
         },
         // Error callback
-        function(data, status, headers, config, remainingCalls) {
+        function(data, status, headers, config) {
           if ( data.error !== undefined )
             $scope.errors.push(data.error.message);
           else
@@ -170,21 +169,22 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
           // Update progress 
           completedCalls += 1;
-          $scope.progress = completedCalls/(completedCalls+remainingCalls);
-          $scope.loading = (remainingCalls > 0);
+          $scope.progress = completedCalls/(completedCalls+facebookApiInstance.remainingCalls());
+          $scope.loading = (facebookApiInstance.remainingCalls() > 0);
 
           // Update timer
           $scope.loadingFinishedAt = new Date().getTime();
           localStorageService.add('loadingFinishedAt', $scope.loadingFinishedAt);
 
-          // If done, start indexing
-          if (!$scope.loading) {
-            console.log("DONE");
-            searchEngine.start();
-          }
+          // Check if done
+          if (!$scope.loading) onCompleted();
         });
     });
   };
+
+  function onCompleted() {
+    searchEngine.start();
+  }
 
   // Helper function to get an object's attribute from its string notation
   function getNestedAttribute(object, attributeString) {
