@@ -80,7 +80,7 @@ module.factory('facebookApi',
                 // Callbacks
                 if (dataItem.body.error !== undefined)
                   batchCallbacks[index].errorCallback(dataItem.body, status, headers, config);
-                else if (dataItem.body.data.length >= 0)
+                else
                   batchCallbacks[index].successCallback(dataItem.body, status, headers, config);
               }             
             });

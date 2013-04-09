@@ -143,12 +143,13 @@
         </div>
         <!-- Object actions -->
         <button class="btn pull-right"
-          ng-click="showDetails=!showDetails">Show data</button>
+          ng-click="showDetails=!showDetails; loadObject(object)">Show data</button>
       </div>
       <!-- Object details -->
       <div class="well"
         ng-show="showDetails">
-        {{object}}
+        <span ng-show="object._stub">Loading...</span>
+        <span ng-show="!object._stub">{{object}}</span>
       </div>
       <hr>
     </div>

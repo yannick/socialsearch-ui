@@ -4,23 +4,17 @@
 * Main controller
 */
 app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageService, fullproofSearchEngine, FACEBOOK_OBJECTS, FACEBOOK_OBJECT_INDEXABLE_KEYS) {
+  
+
+  /* Scope variables */
+
+
   // Token
   $scope.facebookApiToken = localStorageService.get('facebookApiToken') || '';
 
   // Notifications
   $scope.warnings = [];
   $scope.errors = [];
-
-  // Handle broadcasted notifications
-  $scope.$on('LocalStorageModule.notification.error', function(event, message) {
-   if (!_.contains($scope.errors, message)) $scope.errors.push(message);
-  });
-  $scope.$on('app.notification.warning', function(event, message) {
-    if (!_.contains($scope.warnings, message)) $scope.warnings.push(message);
-  });
-  $scope.$on('app.notification.error', function(event, message) {
-    if (!_.contains($scope.errors, message)) $scope.errors.push(message);
-  });
   
   // Objects and search results
   // Objects are saved in local storage separately with their 'id' as key
@@ -28,13 +22,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   // and those matching the current search in $scope.searchedObjects
   $scope.objectIds = angular.fromJson(localStorageService.get('objectIds')) || [];
   $scope.objects = [];
-  _.each($scope.objectIds, function(objectId) {
-    var storageObject = angular.fromJson(localStorageService.get(objectId));
-    if (storageObject !== null) {
-      $scope.objects.push(storageObject);
-    }
-  });
-  $scope.searchedObjects = $scope.objects;
+  $scope.searchedObjects = [];
 
   // Timing
   $scope.loadingStartedAt = null;
@@ -55,18 +43,50 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   // Facets are generated for the '_type' attribute of all objects in FACEBOOK_OBJECTS
   // Used to filter objects by type
   $scope.facets = {};
+
+
+  /* Event handlers */
+
+
+  // Handle broadcasted notifications
+  $scope.$on('LocalStorageModule.notification.error', function(event, message) {
+   if (!_.contains($scope.errors, message)) $scope.errors.push(message);
+  });
+  $scope.$on('app.notification.warning', function(event, message) {
+    if (!_.contains($scope.warnings, message)) $scope.warnings.push(message);
+  });
+  $scope.$on('app.notification.error', function(event, message) {
+    if (!_.contains($scope.errors, message)) $scope.errors.push(message);
+  });
+
+
+  /* Initializations */
+
+
+  // Load objects from local storage
+  _.each($scope.objectIds, function(objectId) {
+    var storageObject = angular.fromJson(localStorageService.get(objectId));
+    if (storageObject !== null) {
+      $scope.objects.push(storageObject);
+    }
+  });
+  $scope.searchedObjects = $scope.objects;
+
+  // Load facets
   _.each(_.pluck(FACEBOOK_OBJECTS, 'url'), function(facet){
     $scope.facets[facet] = true;  
   });
 
-  // Facebook API
-  // Initiated when loading data
-  var facebookApiInstance = null;
+  // Load Facebook API
+  // Initialized when loading data
+  var facebookApiInstance = null; 
 
   // Load the search engine
   var searchEngine = fullproofSearchEngine($scope.objects, FACEBOOK_OBJECT_INDEXABLE_KEYS, 'facebookObjects',
     // Success callback
     function() {
+      console.log("INDEXING DONE AT ");
+      console.log(new Date().toTimeString());
       $scope.indexingProgress = 1;
       $scope.indexing = false;
       $scope.indexingFinishedAt = new Date().getTime();
@@ -88,6 +108,10 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   // Start the search engine if index has been already built
   // Index is built after objects have been loaded
   if ($scope.objects.length > 0) searchEngine.start();
+
+
+  /* Scope methods */
+
 
   /*
    * Searches objects for a given search term
@@ -115,6 +139,10 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
    * Objects to load are defined in config.js FACEBOOK_OBJECTS
    */
   $scope.load = function(){
+    // Load API instance
+    facebookApiInstance = facebookApiInstance || facebookApi($scope.facebookApiToken);
+    localStorageService.add('facebookApiToken', $scope.facebookApiToken);
+
     // Reset search, progress, errors and timer
     $scope.search = ''; 
     $scope.searchedObjects = $scope.objects;
@@ -123,10 +151,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     $scope.warings = [];
     $scope.loading = true;
     $scope.loadingStartedAt = new Date().getTime();
-
-    // Load API instance
-    facebookApiInstance = facebookApi($scope.facebookApiToken);
-    localStorageService.add('facebookApiToken', $scope.facebookApiToken);
 
     var completedCalls = 0;
     if ($scope.loadingFinishedAt)
@@ -145,14 +169,18 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
             // Extend response objects with meta properties
             _.extend(responseObject, {_type: facebookObject.url});
             facebookObject.preview = facebookObject.preview || 'name';
-            _.extend(responseObject, {_preview: getNestedAttribute(responseObject, facebookObject.preview)});
-          
+            _.extend(responseObject, {_preview: getNestedAttribute(responseObject,
+              facebookObject.preview)});
+
             // Save object unless already in list
+            // Saves a stub of the object in local storage
             if (_.contains($scope.objectIds, responseObject.id) == false) {
               $scope.objectIds.push(responseObject.id);
               $scope.objects.push(responseObject);
+              var objectStub = {id: responseObject.id, _preview: responseObject._preview,
+                _type:responseObject._type, _stub: true};
               localStorageService.add('objectIds', angular.toJson($scope.objectIds));
-              localStorageService.add(responseObject.id, angular.toJson(responseObject));
+              localStorageService.add(responseObject.id, angular.toJson(objectStub));
             }
           });
 
@@ -212,6 +240,32 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   }
 
   /*
+   * Loads the object's Facebook data
+   * Re-loads the data from Facebook if not stored in scope
+   */
+  $scope.loadObject = function(object) {
+    // Load API instance
+    facebookApiInstance = facebookApiInstance || facebookApi($scope.facebookApiToken);
+    
+    if (object._stub == true) {
+      facebookApiInstance.get(object.id, 
+        // Success callback  
+        function(data, status, headers, config) {
+          var scopeObject = _.findWhere($scope.objects, {id: object.id});
+          scopeObject = _.extend(object, data);
+          scopeObject._stub = false;
+        },
+        // Error callback
+        function(data, status, headers, config) {
+          var scopeObject = _.findWhere($scope.objects, {id: object.id});
+          scopeObject = _.extend(object, {error: data.error.message});
+          scopeObject._stub = false;
+        }
+      );
+    }
+  }
+
+  /*
   * Resets everything
   */
   $scope.reset = function() {
@@ -224,7 +278,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     // Stop indexing and clear index
     // Note: While the search engine is starting up it may not be stopped
     // since it works asynchronously
-    if (searchEngine !== undefined && searchEngine !== null) {
+    if (typeof(searchEngine) !== undefined && searchEngine !== null) {
       searchEngine.clear();
     }
     
@@ -240,7 +294,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
     // Reset errors
     $scope.errors = [];
-    $scope.Warnings = [];
+    $scope.warnings = [];
     
     // Reset progress
     $scope.loading = false;
@@ -295,7 +349,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   */
   $scope.toggleFacets = function() {
     var firstFacet = !!$scope.facets[_.keys($scope.facets)[0]];
-    console.log(firstFacet);
     _.each($scope.facets, function(facet, key) {
       $scope.facets[key] = !firstFacet;
     });

@@ -6,7 +6,6 @@ An app to search a user's available Facebook data, built with AngularJS and the 
 - Retrieves all user data from the Facebook API with only an access token, which can be obtained for example at https://developers.facebook.com/tools/explorer/ 
 - Uses fulltext search indexing to make the data searchable
 - Allows filtering by object type (e.g. friends, likes, posts, etc.) with search facets
-- Stores all data in the browser
 
 See a demo at http://www.animyeboah.com/projects/facebook-data-search/
 
