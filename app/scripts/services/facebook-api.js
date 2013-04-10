@@ -4,21 +4,24 @@
 * Service for retrieving objects via the Facebook Graph API asynchronously
 * - Implements a rate limit for API requests
 * - Implements transparent paging to load all objects
-* - Automatically uses batch calls to minimize the number of requests 
-* 
-* Usage in controllers: 
+* - Automatically uses batch calls to minimize the number of requests
+*
+* Usage in controllers:
 *   var myApi = facebookApi(FACEBOOK_API_ACCESS_TOKEN);
 *   myApi.get(objectPath, successCallback, errorCallback);
-*   myApi.stop(); // optional, stop all unsent calls
-*   myApi.remainingCalls(); // number of remaining calls
+*
+* For a documentation of all method please see "Public methods" section below.
+*
 */
 
 var module = angular.module('services.facebookApi', []);
 
 module.factory('facebookApi',
-  function($http, FACEBOOK_API_RATE_LIMIT, FACEBOOK_API_BATCH_SIZE) {
+  function($rootScope, $http, FACEBOOK_API_RATE_LIMIT, FACEBOOK_API_BATCH_SIZE) {
 
     var facebookApiFactory = function(apiAccessToken) {
+      var self = this;
+
       // Facebook API config
       var apiBaseUrl = 'https://graph.facebook.com/';
       var batchSize = FACEBOOK_API_BATCH_SIZE; // Size limit for batch calls
@@ -110,10 +113,39 @@ module.factory('facebookApi',
         window.clearTimeout(queueTimeout); window.queueTimeout = undefined;
       }
 
-      // Public methods
+      /*
+       * Helper function to get an object's attribute from its string notation
+       */
+      function getNestedAttribute(object, attributeString) {
+        var resultAttribute = object;
+        var attributeHierarchy = attributeString.split(".");
+        _.each(attributeHierarchy, function(attribute){
+          if (Array.isArray(resultAttribute)) {
+            resultAttribute = resultAttribute[0];
+          }
+          if (resultAttribute != null && typeof(resultAttribute[attribute]) !== 'undefined') {
+            resultAttribute = resultAttribute[attribute];
+          } else {
+            resultAttribute = null;
+          }
+        });
+        return resultAttribute;
+      }
+
+
+      /* Public methods */
+
+
       var facebookApi = {
-        // Adds an API call to the queue
-        // Calls 'successCallback' or 'errorCallback' when a response has been received
+
+        /*
+         * Query an API endpoint
+         *
+         * Calls 'successCallback' or 'errorCallback' when a response has been received
+         *
+         * Parameters:
+         *   path     relative path of the API endpoint
+         */
         get: function(path, successCallback, errorCallback) {
           // Add batch item to queue
           remainingCalls += 1;
@@ -121,11 +153,87 @@ module.factory('facebookApi',
           batchItemCallbacks.push({successCallback: successCallback, errorCallback: errorCallback});
           startQueue();
         },
-        // Stops all queued API calls
+        /*
+         * Loads all of a users' connections
+         *
+         * Requires a valid $scope.facebookApiToken
+         * Objects to load are defined in config.js FACEBOOK_OBJECTS
+         *
+         * Parameters:
+         *   facebookObjectID     The user's or object's Facebook ID
+         *   facebookObjectID     The user's or object's name or title
+         *   connections          Array of Facebook connections to load
+         *   since                (optional) Timestamp for the 'since' API parameter
+         *   callSuccessCallback  Callback for each connection, when successful
+         *   progressCallback     Progress callback, called with a progress parameter 0..1
+         *   completedCallback    Callback when all API calls completed
+         */
+        loadConnections: function(facebookObjectId, facebookObjectName, connections, since, callSuccessCallback,
+          progressCallback, completedCallback) {
+          var completedCalls = 0;
+
+          _.each(connections, function(facebookObject) {
+            // Send HTTP request
+            var requestUrl = facebookObjectId + "/" + facebookObject.url;
+
+            if (since) requestUrl += '?since=' + since;
+
+            facebookApi.get(requestUrl,
+              // Success callback
+              function(data, status, headers, config) {
+                var responseObjects = [];
+
+                // Extend response objects with meta properties
+                _.each(data.data, function(responseObject){
+                  _.extend(responseObject, {_for: facebookObjectId});
+                  _.extend(responseObject, {_for_name: facebookObjectName});
+                  _.extend(responseObject, {_type: facebookObject.url});
+                  facebookObject.preview = facebookObject.preview || 'name';
+                  _.extend(responseObject, {_preview: getNestedAttribute(responseObject,
+                    facebookObject.preview)});
+                  responseObjects.push(responseObject);
+                });
+
+                // Call success callback
+                callSuccessCallback(responseObjects, facebookObjectId);
+
+                // Progress callback
+                completedCalls += 1;
+                var progress = completedCalls/(completedCalls+facebookApi.remainingCalls());
+                progressCallback(progress);
+
+                // Completed callback
+                if (progress == 1) completedCallback(facebookObjectId);
+              },
+              // Error callback
+              function(data, status, headers, config) {
+                // Error notification
+                if ( data.error !== undefined )
+                  $rootScope.$broadcast('facebookAPI.notification.warning', data.error.message);
+                else
+                  $rootScope.$broadcast('facebookAPI.notification.warning', 'No network connectivity or unknown error');
+
+                // Progress callback
+                completedCalls += 1;
+                var progress = completedCalls/(completedCalls+facebookApi.remainingCalls());
+                progressCallback(progress);
+
+                // Completed callback
+                if (progress == 1) completedCallback(facebookObjectId);
+              });
+          });
+        },
+
+        /* 
+         * Stops all queued API calls
+         */
         stop: function() {
           stopQueue();
         },
-        // Get the current number of remaining calls
+
+        /* 
+         * Get the current number of remaining calls
+         */
         remainingCalls: function() {
           return remainingCalls;
         }
