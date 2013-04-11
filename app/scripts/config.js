@@ -105,7 +105,7 @@ app.constant('FACEBOOK_FRIEND_OBJECTS', [
  * Specified keys will also be indexed if they are nested e.g. {from: {name: "name"}}
  */
 app.constant('FACEBOOK_OBJECT_INDEXABLE_KEYS', [
-  "_for_name", // Added meta attribute containing the name of the object's owner
+  "_for_name", // Meta attribute containing the name of the object's owner
   "name",
   "description",
   "location",

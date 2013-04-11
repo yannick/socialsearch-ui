@@ -187,6 +187,8 @@ module.factory('facebookApi',
                 _.each(data.data, function(responseObject){
                   _.extend(responseObject, {_for: facebookObjectId});
                   _.extend(responseObject, {_for_name: facebookObjectName});
+                  _.extend(responseObject, {_storage_id: facebookObjectId + "__" +
+                    responseObject.id});
                   _.extend(responseObject, {_type: facebookObject.url});
                   facebookObject.preview = facebookObject.preview || 'name';
                   _.extend(responseObject, {_preview: getNestedAttribute(responseObject,

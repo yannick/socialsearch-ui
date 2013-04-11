@@ -3,8 +3,10 @@
 /**
 * Main controller
 */
-app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageService, fullproofSearchEngine, FACEBOOK_OBJECTS, FACEBOOK_FRIEND_OBJECTS, FACEBOOK_OBJECT_INDEXABLE_KEYS) {
-  
+app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageService,
+  fullproofSearchEngine, FACEBOOK_OBJECTS, FACEBOOK_FRIEND_OBJECTS,
+  FACEBOOK_OBJECT_INDEXABLE_KEYS) {
+
 
   /* Scope variables */
 
@@ -17,7 +19,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.errors = [];
   
   // Objects and search results
-  // Objects are saved in local storage separately with their 'id' as key
   // All retrieved Facebook objects are stored in $scope.objects
   // and those matching the current search in $scope.searchedObjects
   $scope.objectIds = angular.fromJson(localStorageService.get('objectIds')) || [];
@@ -35,7 +36,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.loadingUser = null;
   $scope.progress = 0;
   $scope.indexing = false;
-  $scope.indexingProgress = 0;
 
   // Search
   $scope.search = '';
@@ -52,9 +52,13 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   $scope.$on('LocalStorageModule.notification.error', function(event, message) {
    if (!_.contains($scope.errors, message)) $scope.errors.push(message);
   });
+  $scope.$on('app.notification.error', function(event, message) {
+    $scope.errors.push(message);
+  });
   $scope.$on('facebookAPI.notification.warning', function(event, message) {
     if (!_.contains($scope.warnings, message)) $scope.warnings.push(message);
   });
+
 
   /* Initializations */
 
@@ -80,30 +84,14 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
   var facebookApiInstance = null; 
 
   // Load the search engine
-  var searchEngine = fullproofSearchEngine($scope.objects, FACEBOOK_OBJECT_INDEXABLE_KEYS, 'facebookObjects',
+  var searchEngine = fullproofSearchEngine('facebookObjects',
     // Success callback
-    function() {
-      $scope.indexingProgress = 1;
-      $scope.indexing = false;
-      $scope.indexingFinishedAt = new Date().getTime();
-      $scope.$apply();
-    },
+    function() {},
     // Error callback
     function() {
-      $scope.$apply();
-    },
-    // Progress callback
-    function(progress) {
-      $scope.indexing = true;
-      $scope.indexingProgress = progress;
-      $scope.indexingFinishedAt = new Date().getTime();
-      $scope.$apply();
+      $scope.$broadcast('app.notification.error', 'Error loading search engine.');
     }
   );
-
-  // Start the search engine if index has been already built
-  // Index is built after objects have been loaded
-  if ($scope.objects.length > 0) searchEngine.start();
 
 
   /* Scope methods */
@@ -120,13 +108,16 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
       $scope.searching = false;
     }
     else {
-      searchEngine.search(search, function(resultItems){
-        $scope.searchedObjects = resultItems;
+      searchEngine.search(search, function(resultKeys) {
+        $scope.searchedObjects = [];
+        _.each(resultKeys, function(resultKey) {
+          $scope.searchedObjects.push(_.findWhere($scope.objects, {_storage_id: resultKey}));
+        });
         $scope.searching = false;
         $scope.$apply();
       });
     }
-  } 
+  }
 
   /*
    * Loads objects via the Facebook Graph API into $scope.objects
@@ -136,7 +127,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
    */
   $scope.load = function() {
     // Load API instance
-    facebookApiInstance = facebookApiInstance || facebookApi($scope.facebookApiToken);
+    facebookApiInstance = facebookApi($scope.facebookApiToken);
     localStorageService.add('facebookApiToken', $scope.facebookApiToken);
 
     // Reset search, progress, errors and timer
@@ -154,8 +145,8 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
 
     // Load user and then friend connections
     $scope.loadingUser = 'your Facebook data';
-    facebookApiInstance.loadConnections('me', 'me', FACEBOOK_OBJECTS, since, callSuccessCallback,
-      progressCallback, meCompletedCallback);
+    facebookApiInstance.loadConnections('me', 'me', FACEBOOK_OBJECTS, since,
+      callSuccessCallback, progressCallback, meCompletedCallback);
     var loadedFriends = 0;
 
     var currentLoadingUserId = null;
@@ -164,20 +155,45 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
       // Save objects unless already in list
       // Saves a stub of the object in local storage
       _.each(responseObjects, function(responseObject) {
-        if (_.contains($scope.objectIds, responseObject.id) == false) {
-          var storageId = userId + "__" + responseObject.id;
-
-          $scope.objectIds.push(storageId);
+        if (!_.contains($scope.objectIds, responseObject._storage_id)) {
+          // Store full object in scope
+          $scope.objectIds.push(responseObject._storage_id);
           $scope.objects.push(responseObject);
 
+          // Store object stub in storage
           var objectStub = {id: responseObject.id, _for: responseObject._for,
-            _for_name: responseObject._for_name, _preview: responseObject._preview,
-            _type:responseObject._type, _stub: true};
+            _for_name: responseObject._for_name, _storage_id: responseObject._storage_id,
+            _preview: responseObject._preview, _type:responseObject._type, _stub: true};
+
+          if (responseObject.picture) objectStub.picture = responseObject.picture;
+          if (responseObject._type == 'friends') objectStub.name = responseObject.name;
 
           localStorageService.add('objectIds', angular.toJson($scope.objectIds));
-          localStorageService.add(storageId, angular.toJson(objectStub));
+          localStorageService.add(responseObject._storage_id, angular.toJson(objectStub));
+
+          // Index object
+          var text = loadIndexableTexts(responseObject, FACEBOOK_OBJECT_INDEXABLE_KEYS).join(" ");
+          searchEngine.index(text, responseObject._storage_id);
         }
       });
+    }
+
+    // Helper function, recursively loads an object's string values of predefined keys
+    // Valid keys are predefined as 'indexableKeys'
+    function loadIndexableTexts(object, indexableKeys, objectTexts) {
+      objectTexts = objectTexts || [];
+      if (object === null) return objectTexts;
+
+      _.each(_.keys(object), function(key) {
+        if (typeof(object[key]) == "object") {
+          loadIndexableTexts(object[key], indexableKeys, objectTexts);
+        } else if (_.contains(indexableKeys, key) && typeof(object[key]) == "string"
+            && !_.contains(objectTexts, object[key])) {
+          objectTexts.push(object[key]);
+        }
+      });
+
+      return objectTexts;
     }
 
     function progressCallback(progress) {
@@ -192,24 +208,27 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
       // Completed loading user, load friends
       $scope.friends = _.where($scope.objects, {_type: 'friends'});
       localStorageService.add('friends', angular.toJson($scope.friends));
-
+      
       /// For faster testing
-      /// $scope.friends = [$scope.friends[0]];
+      /// $scope.friends =  []; //[$scope.friends[0]];
       ///
 
-      $scope.progress = 0;
-      $scope.loadingUser = $scope.friends[0].name + " (1 of " + $scope.friends.length + ")";
-      facebookApiInstance.loadConnections($scope.friends[0].id, $scope.friends[0].name,
-        FACEBOOK_FRIEND_OBJECTS, since, callSuccessCallback, progressCallback,
-        friendCompletedCallback);
+      if ($scope.friends.length > 0) {
+        $scope.progress = 0;
+        $scope.loadingUser = $scope.friends[0].name + " (1 of " + $scope.friends.length + ")";
+        facebookApiInstance.loadConnections($scope.friends[0].id, $scope.friends[0].name,
+          FACEBOOK_FRIEND_OBJECTS, since, callSuccessCallback, progressCallback,
+          friendCompletedCallback);
+      } else {
+        onDone();
+      }
     }
 
     function friendCompletedCallback(userId) {
       loadedFriends += 1;
 
       if (loadedFriends == $scope.friends.length) {
-        $scope.loading = false;
-        searchEngine.start();
+        onDone();
       } else {
         $scope.loadingUser = $scope.friends[loadedFriends].name + " (" + (loadedFriends+1) +
           " of " + $scope.friends.length + ")";
@@ -218,6 +237,23 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
           $scope.friends[0].name, FACEBOOK_FRIEND_OBJECTS, since, callSuccessCallback,
           progressCallback, friendCompletedCallback);
       }
+    }
+
+    function onDone() {
+      $scope.loading = false;
+      $scope.indexing = true;
+
+      // Complete indexing, then wait until engine ready for searching
+      // Using a dummy search and waiting for a response to find out when it is ready
+      searchEngine.complete(function() {
+        searchEngine.search('me', function(results){
+          $scope.indexing = false;
+          $scope.indexingFinishedAt = new Date().getTime();
+          if(!$scope.$$phase) {
+            $scope.$apply();
+          }
+        });
+      });
     }
 
   }
@@ -262,7 +298,7 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     // Note: While the search engine is starting up it may not be stopped
     // since it works asynchronously
     if (typeof(searchEngine) !== undefined && searchEngine !== null) {
-      searchEngine.clear();
+      searchEngine.reset();
     }
     
     // Clear local storage
@@ -285,7 +321,6 @@ app.controller('MainCtrl', function ($scope, $http, facebookApi, localStorageSer
     $scope.loadingUser = null;
     $scope.progress = 0;
     $scope.indexing = false;
-    $scope.indexingProgress = 0;
 
     // Reset search
     $scope.search = '';

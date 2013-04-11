@@ -4,24 +4,22 @@
  * FullProof service
  * Provides a FullProof search engine
  *
- * Usage: 
- *  searchEngine = fullproofSearchEngine(data, indexableKeys, databaseName, 
- *    successCallback, errorCallback); 
+ * Usage:
+ *  searchEngine = fullproofSearchEngine(databaseName, successCallback, errorCallback);
+ *  searchEngine.engine.injectDocument(text, key, callback);
  *  searchEngine.search(searchTerm, callback);
  *
  *  'data' must be an array of objects
- *  'indexableKeys' must be an array of all keys of 'data' of which the values shall be 
- *    indexed (keys may be nested)
  *  'errorCallback' or 'successCallback' will receive the matching objects from 'data'
  *    as single argument
  */
 
 var module = angular.module('services.fullproofSearchEngine', []);
 
-module.factory('fullproofSearchEngine', [  
+module.factory('fullproofSearchEngine', [
   function() {
 
-    var fullproofFactory = function(data, indexableKeys, databaseName, successCallback, errorCallback, progressCallback) {
+    var fullproofFactory = function(databaseName, successCallback, errorCallback) {
       // Setup search engine
       var searchEngine = new fullproof.BooleanEngine();
 
@@ -33,71 +31,60 @@ module.factory('fullproofSearchEngine', [
         initializer: initializer
       };
 
-      // Define initializer
-      // Called when the index is created, injects searchable text for each item 
+      // Empty initializer
       function initializer(injector, callback) {
-        //debugger;
-        var synchro = fullproof.make_synchro_point(callback, data.length-1);
-        var texts = [];
-        var keys = [];
-
-        // Helper function, recursively loads an object's string values of predefined keys
-        // Valid keys are predefined as 'indexableKeys'
-        function loadIndexableTexts(object, indexableKeys, objectTexts) {
-          objectTexts = objectTexts || [];
-          if (object === null) return objectTexts;
-
-          _.each(_.keys(object), function(key) {
-            if (typeof(object[key]) == "object") {
-              loadIndexableTexts(object[key], indexableKeys, objectTexts);
-            } else if (_.contains(indexableKeys, key) && typeof(object[key]) == "string") {
-              objectTexts.push(object[key]);
-            }
-          });
-
-          return objectTexts;
-        }
-
-        _.each(data, function(item, i) {
-          // Extract all keys and values as text from the item's JSON
-          // removing any special characters 
-          var objectTexts = loadIndexableTexts(item, indexableKeys);
-          keys.push(i); 
-          texts.push(objectTexts.join(" "));
-        });
-
-        injector.injectBulk(texts, keys, callback, progressCallback);
+        callback();
       }
 
+      searchEngine.open([index], fullproof.make_callback(successCallback, true), fullproof.make_callback(errorCallback, false));
+
       return {
-        // Starts the search engine and load or build the index
-        start: function() {
-          searchEngine.open([index], fullproof.make_callback(successCallback, true), fullproof.make_callback(errorCallback, false));
+        /*
+         * Returns the opened fullproof engine
+         */
+        engine: searchEngine,
+        /*
+         * Adds a document to the index
+         * Must call 'complete' after all documents have been added
+         */
+        index: function(text, key, callback) {
+          callback = callback || function() {};
+          searchEngine.injectDocument(text, key, callback);
         },
-        // Stops the search engine and clear the index
-        clear: function(callback) {
-          callback = callback || function(){};
-          searchEngine.clear(callback);
+        /*
+         * Completes adding documents to the index
+         */
+        complete: function(successCallback, errorCallback) {
+          successCallback = successCallback || function(){};
+          errorCallback = errorCallback || function(){};
+
+          searchEngine.open([index], fullproof.make_callback(successCallback, true),
+            fullproof.make_callback(errorCallback, false));
         },
-        // Re-indexes the data
-        reindex: function() {
-          searchEngine.clear(function() {
-            searchEngine.open([index], fullproof.make_callback(successCallback, true), fullproof.make_callback(errorCallback, false));
-          });
-        },
-        // Searches for a 'search' term and return resulting data
+        /*
+         * Searches for a 'search' term and returns result keys
+         */
         search: function(search, callback) {
+          callback = callback || function() {};
+
           searchEngine.lookup(search, function(resultset) {
             var resultItems = [];
             if (resultset && resultset.getSize()) {
               resultset.forEach(function(resultIndex) {
                 // Add item unless already in result list
-                if (data[resultIndex] !== undefined && _.findWhere(resultItems, {id: data[resultIndex].id}) === undefined)
-                  resultItems.push(data[resultIndex]);
+                if (typeof(resultItems[resultIndex]) === 'undefined')
+                  resultItems.push(resultIndex);
               });
             }
             callback(resultItems);
           });
+        },
+        /*
+         * Resets the search engine and clears all indexes
+         */
+        reset: function(callback) {
+          callback = callback || function() {};
+          searchEngine.clear(callback);
         }
       };
     }
