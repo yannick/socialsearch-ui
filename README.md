@@ -3,7 +3,7 @@ SocialSearch UI for Facebook
 
 An app to search a user's available Facebook data, built with AngularJS and the Facebook Graph API.
 
-- Retrieves all user data from the Facebook API with only an access token, which can be obtained for example at https://developers.facebook.com/tools/explorer/ 
+- Retrieves all user data from the Facebook API with only an access token, which can be obtained for example at https://developers.facebook.com/tools/explorer/
 - Uses fulltext search indexing to make the data searchable
 - Allows filtering by object type (e.g. friends, likes, posts, etc.) with search facets
 
@@ -19,8 +19,8 @@ Development
 
 The following packages are required for development:
 
-- [node 0.8 and npm](http://nodejs.org/download/) 
-- [bower](http://twitter.github.com/bower/) (HTML/CSS/JavaScript package manager) 
+- [node 0.8 and npm](http://nodejs.org/download/)
+- [bower](http://twitter.github.com/bower/) (HTML/CSS/JavaScript package manager)
 - [grunt](http://gruntjs.com/getting-started) (JavaScript task runner)
 
 Setting up build tools:
