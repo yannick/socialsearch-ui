@@ -7,8 +7,6 @@ An app to search a user's available Facebook data, built with AngularJS and the 
 - Uses fulltext search indexing to make the data searchable
 - Allows filtering by object type (e.g. friends, likes, posts, etc.) with search facets
 
-See a demo at http://www.animyeboah.com/projects/facebook-data-search/
-
 Facebook API limitations
 ------------------------
 
@@ -42,3 +40,12 @@ There is a configuration file `app/config.js` which contains:
 - Fine-tuning for the Facebook API
  - Rate limit for API calls
  - Size limit for batch calls
+ 
+ 
+Code: Anim Yeboah
+Idea, Funding & Project Lead: Yannick Koechlin
+ 
+copyright 2013 Yannick Koechlin
+
+if you want to use/extend this please drop me a message and i will attach a licence.
+
